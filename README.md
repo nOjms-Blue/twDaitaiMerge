@@ -1,0 +1,2 @@
+# twDaitaiMerge
+PythonでTailwind CSSをCDN等で使用する際にクラス名をだいたいマージするためのライブラリ
