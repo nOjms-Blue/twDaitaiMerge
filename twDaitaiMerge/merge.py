@@ -1,17 +1,22 @@
 # encoding : utf-8
+from typing import TypeAlias
 
-def twMerge(*className: str):
-	def parseTwObj(twobj) -> list:
+# (selector, utility)
+TailwindObject: TypeAlias = tuple[str, list[str]]
+
+def twMerge(*className: str) -> str:
+	# m-2 -> mt-2, mb-2, ml-2, mr-2 のように分解
+	def parseTwObj(twobj: TailwindObject) -> list[TailwindObject]:
 		selector, props = twobj
-
+		
 		is_minus = False
 		if len(props) > 0:
 			if props[0] == "":
 				props = props[1:]
 				is_minus = True
-
+		
 		minus = ([""] if is_minus else [])
-
+		
 		if len(props) > 0:
 			if props[0] == "inset" and len(props) >= 2:
 				if props[1] == "x":
@@ -162,11 +167,12 @@ def twMerge(*className: str):
 								(selector, minus + ["scroll", "pt", *props[2:]]),
 								(selector, minus + ["scroll", "pb", *props[2:]]),
 							]
-
+		
 		return [twobj]
 	
-	def mergeTwObj(twobj_list: list[tuple]) -> list:
-		def searchProp(prop, is_minus, search_list, starts_props):
+	# mt-2, mb-2, ml-2, mr-2 -> m-2 のように結合
+	def mergeTwObj(twobj_list: list[TailwindObject]) -> list[TailwindObject]:
+		def searchProp(prop: list[str], is_minus: bool, search_list: list[TailwindObject], starts_props: list[str]):
 			def startProp(target, start_prop):
 				if len(target) < len(start_prop):
 					return False
@@ -214,21 +220,21 @@ def twMerge(*className: str):
 			
 			return same_value_props_index, is_exist
 		
-		search = []
-		merged = []
+		search: list[TailwindObject] = []
+		merged: list[TailwindObject] = []
 		for twobj in twobj_list:
 			search.append(twobj)
 		
 		while(len(search) > 0):
 			twobj = search.pop()
 			selector, props = twobj
-
+			
 			is_minus = False
 			if len(props) >= 1:
 				if props[0] == "":
 					is_minus = True
 					props = props[1:]
-
+			
 			if len(props) >= 1:
 				if props[0] in ["left", "right", "top", "bottom"]:
 					same_value_props_index, is_exist = searchProp(props, is_minus, search, ["left", "right", "top", "bottom"])
@@ -278,7 +284,7 @@ def twMerge(*className: str):
 							continue
 				elif props[0] in ["mt", "mr", "mb", "ml"]:
 					same_value_props_index, is_exist = searchProp(props, is_minus, search, ["mt", "mr", "mb", "ml"])
-
+					
 					# 結合可能であれば対象は削除し、結合結果を追加して次の値へ
 					if is_exist["mt"] and is_exist["mr"] and is_exist["mb"] and is_exist["ml"]:
 						for i in reversed(same_value_props_index):
@@ -386,10 +392,12 @@ def twMerge(*className: str):
 											del search[i]
 									merged.append((selector, ["border", "x", *props[2:]]))
 									continue
-
+			
 			merged.append(twobj)
+		
 		return merged
-
+	
+	# TailwindObjectに変換
 	def toTwObj(className: str):
 		# className -> selector, utility
 		bracket: bool = False
@@ -410,12 +418,14 @@ def twMerge(*className: str):
 		separated: tuple[str, str] = ("", className)
 		if start < len(className):
 			separated = (className[:start], className[start:])
+		selector, utility = separated
 		
-		prop_split = []
-		bracket = False
-		start = 0
-		for i in range(0, len(separated[1]), 1):
-			c = separated[1][i]
+		# ハイフンで分割
+		prop_split: list[str] = []
+		bracket: bool = False
+		start: int = 0
+		for i in range(0, len(utility), 1):
+			c = utility[i]
 			if i == start:
 				if c == "[":
 					bracket = True
@@ -425,41 +435,41 @@ def twMerge(*className: str):
 					bracket = False
 			else:
 				if c == "-":
-					prop_split.append(separated[1][start:i])
+					prop_split.append(utility[start:i])
 					start = i + 1
-		if start < len(separated[1]):
-			prop_split.append(separated[1][start:])
+		if start < len(utility):
+			prop_split.append(utility[start:])
 		
-		return parseTwObj((separated[0], prop_split))
-
+		return parseTwObj((selector, prop_split))
+	
 	# ユーティリティ部が特定の値から始まっているか
-	def startUtility(target, start):
+	def startUtility(target: list[str], start: list[str]):
 		if len(target) >= len(start):
 			for i in range(0, len(start), 1):
 				if target[i] != start[i]:
 					return False
 			return True
-
+		
 		return False
-
+	
 	# ユーティリティ部が一致しているか
-	def matchUtility(target, comparison):
+	def matchUtility(target: list[str], comparison: list[str]):
 		if len(target) == len(comparison):
 			for i in range(0, len(target), 1):
 				if target[i] != comparison[i]:
 					return False
 			return True
 		return False
-
+	
 	# ユーティリティ部がいずれかと一致しているか
-	def matchUtilitiesOr(target, *comparison_utils):
+	def matchUtilitiesOr(target: list[str], *comparison_utils: list[str]):
 		for comparison in comparison_utils:
 			if matchUtility(target, comparison):
 				return True
 		return False
 
 	# ユーティリティ部が特定の値+サイズから始まるか
-	def startSizeUtility(target, start):
+	def startSizeUtility(target: list[str], start: list[str]):
 		if not startUtility(target, start):
 			return False
 		
@@ -481,7 +491,7 @@ def twMerge(*className: str):
 		return False
 	
 	# ユーティリティ部が特定の値+色から始まるか
-	def startColorUtility(target, start):
+	def startColorUtility(target: list[str], start: list[str]):
 		if (not startUtility(target, start)) or len(target) < len(start) + 1:
 			return False
 		
@@ -497,9 +507,9 @@ def twMerge(*className: str):
 			return True
 
 		return False
-
+	
 	# ユーティリティ部が特定の値+数値から始まるか
-	def startNumberUtility(target, start):
+	def startNumberUtility(target: list[str], start: list[str]):
 		if (not startUtility(target, start)) or len(target) < len(start) + 1:
 			return False
 		
@@ -512,9 +522,9 @@ def twMerge(*className: str):
 				return False
 		
 		return False
-
+	
 	# ユーティリティ部が特定の値+(top,bottom,left,right,center系)から始まるか
-	def startPositionUtility(target, start):
+	def startPositionUtility(target: list[str], start: list[str]):
 		if (not startUtility(target, start)) or len(target) < len(start) + 1:
 			return False
 
@@ -527,9 +537,9 @@ def twMerge(*className: str):
 				if target[:len(v) + 1] == ("[" + v):
 					return True
 		return False
-
+	
 	# ユーティリティ部が特定の値+割合から始まるか
-	def startPercentUtility(target, start):
+	def startPercentUtility(target: list[str], start: list[str]):
 		if (not startUtility(target, start)) or len(target) < len(start) + 1:
 			return False
 		
@@ -554,19 +564,19 @@ def twMerge(*className: str):
 				except:
 					pass
 		return False
-
+	
 	# どちらのユーティリティも比較関数の結果がTrueになるか
-	def dblChk(target1, target2, function, *args):
+	def dblChk(target1: list[str], target2: list[str], function, *args):
 		return function(target1, *args) and function(target2, *args)
-
+	
 	# いずれかのユーティリティの比較関数の結果がTrueになるか
-	def orChk(target1, target2, function, *args):
+	def orChk(target1: list[str], target2: list[str], function, *args):
 		return function(target1, *args) or function(target2, *args)
-
-	merged_twobj: dict = {}
+	
+	merged_twobj: dict[str, list[TailwindObject]] = {}
 	for class_name in className:
 		splited = str(class_name).split(" ")
-		class_names = []
+		class_names: list[TailwindObject] = []
 		for split in splited:
 			if split == "":
 				continue
@@ -577,12 +587,12 @@ def twMerge(*className: str):
 		
 		for c in class_names:
 			c_selector, c_utility = c
-
+			
 			cu_minus = False
 			if c_utility[:1] == [""]:
 				cu_minus = True
 				c_utility = c_utility[1:]
-
+			
 			if c_selector in merged_twobj:
 				for i in reversed(range(0, len(merged_twobj[c_selector]), 1)):
 					m_selector, m_utility = merged_twobj[c_selector][i]
@@ -590,12 +600,12 @@ def twMerge(*className: str):
 						if startUtility(c_utility, m_utility):
 							del merged_twobj[c_selector][i]
 							continue
-
+					
 					mu_minus = False
 					if m_utility[:1] == [""]:
 						mu_minus = True
 						m_utility = m_utility[1:]
-
+					
 					if orChk(c_utility, m_utility, startUtility, ["aspect"]):
 						if dblChk(c_utility, m_utility, startUtility, ["aspect"]):
 							del merged_twobj[c_selector][i]
@@ -1248,10 +1258,10 @@ def twMerge(*className: str):
 			else:
 				merged_twobj[c_selector] = [c]
 	
-	twmerged = []
+	twmerged: list[str] = []
 	for selector in sorted(merged_twobj):
 		twobj_ls = mergeTwObj(merged_twobj[selector])
 		for m in twobj_ls:
 			twmerged.append(m[0] + "-".join(m[1]))
-
+	
 	return " ".join(twmerged)
