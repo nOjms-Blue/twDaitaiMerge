@@ -1,4 +1,4 @@
-from .object import TailwindObject, parseTwObj, mergeTwObj, toTwObj
+from .object import TailwindObject, mergeTwObj, toTwObj
 
 def twMerge(*className: str) -> str:
 	# ユーティリティ部が特定の値から始まっているか
