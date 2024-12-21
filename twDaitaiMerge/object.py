@@ -244,14 +244,14 @@ def mergeTwObj(twobj_list: list[TailwindObject]) -> list[TailwindObject]:
 					merged.append((selector, ["inset", *props[1:]]))
 					continue
 				elif props[0] in ["left", "right"]:
-					if is_exist["left"] or is_exist["right"]:
+					if is_exist["left"] and is_exist["right"]:
 						for i in reversed(same_value_props_index):
 							if search[i][1][0] in ["left", "right"]:
 								del search[i]
 						merged.append((selector, ["inset", "x", *props[1:]]))
 						continue
 				elif props[0] in ["top", "bottom"]:
-					if is_exist["top"] or is_exist["bottom"]:
+					if is_exist["top"] and is_exist["bottom"]:
 						for i in reversed(same_value_props_index):
 							if search[i][1][0] in ["top", "bottom"]:
 								del search[i]
