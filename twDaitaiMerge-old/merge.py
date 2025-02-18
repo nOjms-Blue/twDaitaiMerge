@@ -147,9 +147,7 @@ def twMerge(*className: str) -> str:
 		for c in class_names:
 			c_selector, c_utility = c
 			
-			cu_minus = False
 			if c_utility[:1] == [""]:
-				cu_minus = True
 				c_utility = c_utility[1:]
 			
 			if c_selector in merged_twobj:
@@ -160,9 +158,7 @@ def twMerge(*className: str) -> str:
 							del merged_twobj[c_selector][i]
 							continue
 					
-					mu_minus = False
 					if m_utility[:1] == [""]:
-						mu_minus = True
 						m_utility = m_utility[1:]
 					
 					if orChk(c_utility, m_utility, startUtility, ["aspect"]):
